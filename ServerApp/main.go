@@ -7,56 +7,71 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type DBstart struct {
+type ConnDB struct {
 	Host     string
 	Port     int
 	User     string
 	Password string
 }
 type DBConfig struct {
-	DBstart DBstart
+	DBstart ConnDB
 	DBName  string
 }
 
 type Plants struct {
 	Plant_name              string
+	Plant_alias             string
 	Last_watered            int64
 	Watering_interval_hours int64
-	AliasID                 string
 }
 
 type Users struct {
-	Name    string
-	Surname string
-	Alias   string
+	Name     string
+	Surname  string
+	Alias    string
+	Password string
 }
 
 type Pictures struct {
-	pic byte
+	pic []byte
 }
+
+var dbenv ConnDB
 
 func main() {
 	//check for a DB connection, wait and retry.
 	// if there is a DB conn create (if it does not exist) a DB schema and close DB connection
-	err := CreateDB()
+	envDB(&dbenv)
+	err := CreateDB(dbenv)
 	if err != nil {
 		fmt.Println(err)
 	}
 	// return a OK or a DB error to frontend?
 
 	http.HandleFunc("/addplant", AddplantHttp)
-	//http.HandleFunc("/getplants", getplants)
-	http.HandleFunc("/createuser", Addushttp)
-	log.Fatal(http.ListenAndServe(":80", nil))
+	//http.HandleFunc("/getplants", GetplantHttp)
+	http.HandleFunc("/createuser", AddusHttp)
+	http.HandleFunc("/upload", AddPicHttp)
+	http.HandleFunc("/download", GetPicHttp)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+func envDB(v *ConnDB) error {
+	v.Host = os.Getenv("DB_HOST")
+	dbPortStr := os.Getenv("DB_PORT")
+	v.Port, _ = strconv.Atoi(dbPortStr)
+	v.User = os.Getenv("DB_USER")
+	v.Password = os.Getenv("DB_PASS")
+	return nil
 }
 
-func CreateDB() error {
-	dbconf := DBstart{"userver02.lan", 3306, "root", "VMware1!"}
+func CreateDB(dbconf ConnDB) error {
 	dbdetails := fmt.Sprintf("%s:%s@tcp(%s:%d)/", dbconf.User, dbconf.Password, dbconf.Host, dbconf.Port)
 	db, err := sql.Open("mysql", dbdetails)
 	if err != nil {
@@ -103,14 +118,13 @@ func NewDBconn(config *DBConfig) (*sql.DB, error) {
 }
 
 func Createusql(u Users) error {
-	dbconn := DBstart{"userver02.lan", 3306, "root", "VMware1!"}
-	dbconf := DBConfig{dbconn, "plant_watering"}
+	dbconf := DBConfig{dbenv, "plant_watering"}
 	db, err := NewDBconn(&dbconf)
 	if err != nil {
 		return fmt.Errorf("create user failed with error: %w", err)
 	}
 	defer db.Close()
-	//verify if the user alias exists
+	//verify if the user alias exists, it has to be unique
 	query, _ := db.Prepare("select alias from users where alias=?")
 	defer query.Close()
 	resQuery := query.QueryRow(u.Alias)
@@ -123,19 +137,18 @@ func Createusql(u Users) error {
 		return fmt.Errorf("alias already exists")
 	}
 	//insert the user if alias is new
-	insert, _ := db.Prepare("insert into users (name, surname, alias) values (?, ?, ?)")
+	insert, _ := db.Prepare("insert into users (name, surname, alias, password) values (?, ?, ?, ?)")
 	defer insert.Close()
-	_, err = insert.Exec(u.Name, u.Surname, u.Alias)
+	_, err = insert.Exec(u.Name, u.Surname, u.Alias, u.Password)
 	if err != nil {
 		return fmt.Errorf("insert user failed with error: %w", err)
 	}
 	return nil
 }
 
-func AddplantSql(p Plants) error {
+func AddplantSql(p Plants, u Users) error {
 	// set the DB parameters:
-	dbconn := DBstart{"userver02.lan", 3306, "root", "VMware1!"}
-	dbconf := DBConfig{dbconn, "plant_watering"}
+	dbconf := DBConfig{dbenv, "plant_watering"}
 	// Create a new database connection
 	db, err := NewDBconn(&dbconf)
 	if err != nil {
@@ -143,13 +156,61 @@ func AddplantSql(p Plants) error {
 	}
 	defer db.Close()
 	//insert query
-	insert, _ := db.Prepare("insert into plants (plant_name, last_watered, watering_interval_hours, alias_id) values (?, ?, ?, ?)")
+	insert, _ := db.Prepare("insert into plants (plant_name, plant_alias, last_watered, watering_interval_hours, user_alias) values (?, ?, ?, ?, ?)")
 	defer insert.Close()
-	_, err = insert.Exec(p.Plant_name, p.Last_watered, p.Watering_interval_hours, p.AliasID)
+	_, err = insert.Exec(p.Plant_name, p.Plant_alias, p.Last_watered, p.Watering_interval_hours, u.Alias)
 	if err != nil {
 		return fmt.Errorf("add plant failed with error: %w", err)
 	}
 	return nil
+}
+
+func AddpicSql(pa Plants, p Pictures) error {
+	// set the DB parameters:
+	dbconf := DBConfig{dbenv, "plant_watering"}
+	// Create a new database connection
+	db, err := NewDBconn(&dbconf)
+	if err != nil {
+		return fmt.Errorf("add picture failed with error: %w", err)
+	}
+	defer db.Close()
+	//insert query
+	insert, _ := db.Prepare("insert into pictures (picture, plant_alias) values (?, ?)")
+	defer insert.Close()
+	_, err = insert.Exec(p.pic, pa.Plant_alias)
+	if err != nil {
+		return fmt.Errorf("add picture failed with error: %w", err)
+	}
+	return nil
+}
+
+func GetPlantssql(u Users) ([]Plants, error) {
+	// set the DB parameters:
+	dbconf := DBConfig{dbenv, "plant_watering"}
+	// Create a new database connection
+	db, err := NewDBconn(&dbconf)
+	if err != nil {
+		return nil, fmt.Errorf("get plants failed with error: %w", err)
+	}
+	defer db.Close()
+	//select query
+	stmt, _ := db.Prepare("select plant_name, last_watered, watering_interval_hours, plant_alias from plants where alias_id=?")
+	defer stmt.Close()
+	rows, err := stmt.Query(u.Alias)
+	if err != nil {
+		return nil, fmt.Errorf("get plants failed with error: %w", err)
+	}
+	defer rows.Close()
+	var plants []Plants
+	for rows.Next() {
+		var p Plants
+		err = rows.Scan(&p.Plant_name, &p.Last_watered, &p.Watering_interval_hours, &p.Plant_alias)
+		if err != nil {
+			return nil, fmt.Errorf("get plants failed with error: %w", err)
+		}
+		plants = append(plants, p)
+	}
+	return plants, nil
 }
 
 func AddplantHttp(w http.ResponseWriter, r *http.Request) {
@@ -169,62 +230,32 @@ func AddplantHttp(w http.ResponseWriter, r *http.Request) {
 	}
 	//printing request body, uncomment the next 2 lines for debug
 	//fmt.Println("Request body:", string(body))
-	//fmt.Println(p.Plant_name, p.Watering_interval_hours, p.Last_watered)
-	err = AddplantSql(p)
+	//fmt.Println(p.Plant_name, p.Plant_alias, p.Watering_interval_hours, p.Last_watered)
+
+	//test user
+	u := Users{"b", "b", "MC", "1234dsh"}
+	err = AddplantSql(p, u)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	response := fmt.Sprintf("The plant %v was added for user %v", p.Plant_name, p.AliasID)
+	response := fmt.Sprintf("The plant %v was added for user %v", p.Plant_name, u.Alias)
 	json.NewEncoder(w).Encode(response)
 }
 
 /*
-	func getplants(w http.ResponseWriter, r *http.Request) {
-		// set the DB parameters:
-		dbconn := DBstart{"userver02.lan", 3306, "root", "VMware1!"}
-		dbconf := DBConfig{dbconn, "plant_watering"}
-		// Create a new database connection
-		db, err := NewDBconn(&dbconf)
+	func GetplantHttp(w http.ResponseWriter, r *http.Request) {
+		u := Users{"B", "B", "JC", "gg1234"}
+		plants, err := GetPlantssql(u)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		defer db.Close()
-
-		// Prepare the SQL statement to retrieve all plants
-		stmt, err := db.Prepare(query)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer stmt.Close()
-
-		// Execute the SQL statement to retrieve all plants
-		rows, err := stmt.Query()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
-
-		// Loop through the rows and add each plant to a slice of Plants
-		var plants []Plants
-		for rows.Next() {
-			var p Plants
-			err = rows.Scan(&p.Plant_name, &p.Last_watered, &p.Watering_interval_hours)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			plants = append(plants, p)
-		}
-
 		// Marshal the slice of Plants to JSON and return it as the response
 		json.NewEncoder(w).Encode(plants)
 	}
 */
-func Addushttp(w http.ResponseWriter, r *http.Request) {
+func AddusHttp(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body to get the input data
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -241,6 +272,80 @@ func Addushttp(w http.ResponseWriter, r *http.Request) {
 	err = Createusql(nwuser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+func AddPicHttp(w http.ResponseWriter, r *http.Request) {
+	// Parse the multipart form file
+	err := r.ParseMultipartForm(32 << 20) // 32 MB max form size
+	if err != nil {
+		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+		return
+	}
+
+	// Get the picture data from the form
+	file, _, err := r.FormFile("picture")
+	if err != nil {
+		http.Error(w, "Failed to read picture data", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Read the file data into a byte slice
+	picData, err := ioutil.ReadAll(file)
+	if err != nil {
+		http.Error(w, "Failed to read picture data", http.StatusBadRequest)
+		return
+	}
+
+	// Create a Pictures struct from the file data
+	pic := Pictures{pic: picData}
+
+	pa := Plants{"garlic", "Plantero", 8562723, 2984}
+	// Store the picture in the database
+	err = AddpicSql(pa, pic)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Return a success response
+	w.WriteHeader(http.StatusOK)
+}
+
+func GetPicHttp(w http.ResponseWriter, r *http.Request) {
+
+	// Get the plant alias from the query parameters
+	params := r.URL.Query()
+	plantAlias := params.Get("plant_alias")
+
+	// set the DB parameters:
+	dbconf := DBConfig{dbenv, "plant_watering"}
+	// Create a new database connection
+	db, err := NewDBconn(&dbconf)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("get picture failed with error: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Query the database for the picture associated with the plant alias
+	var pic Pictures
+	row := db.QueryRow("select picture from pictures where plant_alias = ?", plantAlias)
+	err = row.Scan(&pic.pic)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("get picture failed with error: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Set the content type header to the appropriate image type
+	w.Header().Set("Content-Type", "image/jpeg")
+
+	// Serve the image file to the client
+	_, err = w.Write(pic.pic)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("get picture failed with error: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 }
