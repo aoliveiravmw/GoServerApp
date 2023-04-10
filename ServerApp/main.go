@@ -60,7 +60,11 @@ func main() {
 	http.HandleFunc("/createuser", AddusHttp)
 	http.HandleFunc("/upload", AddPicHttp)
 	http.HandleFunc("/download", GetPicHttp)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	//fmt.Println("Server started and listening on port 8080")
+	//log.Fatal(http.ListenAndServe(":8080", nil))
+	// Serving on HTTPS with TLS
+	fmt.Println("Server started and listening on port 4443")
+	log.Fatal(http.ListenAndServeTLS(":4443", "server.crt", "server.key", nil))
 }
 func envDB(v *ConnDB) error {
 	v.Host = os.Getenv("DB_HOST")
@@ -278,20 +282,23 @@ func AddusHttp(w http.ResponseWriter, r *http.Request) {
 
 func AddPicHttp(w http.ResponseWriter, r *http.Request) {
 	// Parse the multipart form file
-	err := r.ParseMultipartForm(32 << 20) // 32 MB max form size
+	err := r.ParseMultipartForm(10 << 20) // 10 MB max form size
 	if err != nil {
 		http.Error(w, "Failed to parse form data", http.StatusBadRequest)
 		return
 	}
 
 	// Get the picture data from the form
-	file, _, err := r.FormFile("picture")
+	file, handler, err := r.FormFile("picture")
 	if err != nil {
-		http.Error(w, "Failed to read picture data", http.StatusBadRequest)
+		http.Error(w, "Failed to read file from form-data", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
+	fmt.Printf("Uploaded file %+v\n", handler.Filename)
+	fmt.Printf("File size %+v\n", handler.Size)
+	fmt.Printf("MIME header%+v\n", handler.Header)
 	// Read the file data into a byte slice
 	picData, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -340,7 +347,7 @@ func GetPicHttp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set the content type header to the appropriate image type
-	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Content-Type", "image/png")
 
 	// Serve the image file to the client
 	_, err = w.Write(pic.pic)
