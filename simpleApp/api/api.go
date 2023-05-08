@@ -1,4 +1,4 @@
-package backend
+package api
 
 import (
 	"database/sql"
@@ -16,7 +16,7 @@ type App struct {
 }
 
 func (a *App) Initialize() {
-
+	a.DB, _ = initDB()
 	a.Router = mux.NewRouter()
 	a.initalizeRoutes()
 }

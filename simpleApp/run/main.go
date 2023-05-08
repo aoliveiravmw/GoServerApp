@@ -1,12 +1,12 @@
 package main
 
 import (
-	"example.com/backend"
+	"simpleApp/api"
 )
 
 func main() {
-	a := backend.App{}
-	a.Port = ":9003"
+	a := api.App{}
+	a.Port = ":8080"
 	a.Initialize()
 	a.Run()
 }
