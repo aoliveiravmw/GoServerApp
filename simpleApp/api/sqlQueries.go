@@ -19,6 +19,9 @@ type dbenv struct {
 	Password string
 	DBname   string
 }
+type pictures struct {
+	pic []byte
+}
 
 func envDB(v *dbenv) error {
 	v.Host = os.Getenv("DB_HOST")
@@ -31,11 +34,6 @@ func envDB(v *dbenv) error {
 }
 func createDB(config dbenv) {
 	dbdetails := fmt.Sprintf("%s:%s@tcp(%s:%d)/", config.User, config.Password, config.Host, config.Port)
-	//For debugging:
-	fmt.Println("trying User:", config.User)
-	fmt.Println("trying Password:", config.Password)
-	fmt.Println("trying Host:", config.Host)
-	fmt.Println("trying Port:", config.Port)
 	db, err := sql.Open("mysql", dbdetails)
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +47,6 @@ func createDB(config dbenv) {
 	sqlQueryStr := strings.TrimSpace(string(sqlQueryBytes))
 	// Split SQL queries into separate statements
 	sqlStatements := strings.Split(sqlQueryStr, ";")
-	fmt.Println(sqlStatements)
 	// Execute each SQL statement
 	for _, sqlStatement := range sqlStatements {
 		if len(strings.TrimSpace(sqlStatement)) == 0 {
@@ -62,9 +59,7 @@ func createDB(config dbenv) {
 	}
 	//For debugging:
 	//fmt.Println("Database and tables created successfully!")
-
 }
-
 func connectDB(config dbenv) (*sql.DB, error) {
 	dbdetails := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", config.User, config.Password, config.Host, config.Port, config.DBname)
 	db, err := sql.Open("mysql", dbdetails)
@@ -77,14 +72,33 @@ func connectDB(config dbenv) (*sql.DB, error) {
 	}
 	return db, nil
 }
-
 func initDB() (*sql.DB, error) {
 	var dbenv dbenv
 	envDB(&dbenv)
 	createDB(dbenv)
 	db, err := connectDB(dbenv)
 	if err != nil {
-		return nil, fmt.Errorf("initDB has failed to connect: %w", err)
+		return nil, fmt.Errorf("db initialization has failed: %w", err)
 	}
 	return db, nil
+}
+func getCountrows(db *sql.DB) (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(picture_id) FROM pictures").Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+func (p *pictures) addFileSql(db *sql.DB) error {
+	insert, _ := db.Prepare("insert into pictures (picture) values ( ?)")
+	defer insert.Close()
+	_, err := insert.Exec(p.pic)
+	if err != nil {
+		return fmt.Errorf("add picture failed with error: %w", err)
+	}
+	return nil
+}
+func (p *pictures) getFileSql(db *sql.DB) error {
+	return db.QueryRow("SELECT picture FROM pictures").Scan(&p.pic)
 }
