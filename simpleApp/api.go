@@ -1,4 +1,4 @@
-package api
+package main
 
 import (
 	"database/sql"
@@ -31,6 +31,7 @@ func (a *App) initalizeRoutes() {
 	a.Router.HandleFunc("/", getReq).Methods("GET")
 	a.Router.HandleFunc("/file", a.uploadFile).Methods("POST")
 	a.Router.HandleFunc("/file", a.downloadFile).Methods("GET")
+	a.Router.HandleFunc("/file", a.deleteFile).Methods("DELETE")
 }
 
 func getReq(w http.ResponseWriter, r *http.Request) {
@@ -81,13 +82,25 @@ func (a *App) uploadFile(w http.ResponseWriter, r *http.Request) {
 func (a *App) downloadFile(w http.ResponseWriter, r *http.Request) {
 	pic := pictures{}
 	err := pic.getFileSql(a.DB)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("get picture failed with error: %s", err.Error()), http.StatusInternalServerError)
+	}
 	// Set the content type header to the appropriate image type
 	w.Header().Set("Content-Type", "image/png")
 
 	// Serve the image file to the client
 	_, err = w.Write(pic.pic)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("get picture failed with error: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("write picture failed with error: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (a *App) deleteFile(w http.ResponseWriter, r *http.Request) {
+	err := deleteRows(a.DB)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Delete picture failed with error: %s", err.Error()), http.StatusInternalServerError)
+	}
+	// Return a success response
+	w.WriteHeader(http.StatusOK)
 }

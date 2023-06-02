@@ -1,4 +1,4 @@
-package api
+package main
 
 import (
 	"database/sql"
@@ -29,6 +29,14 @@ func envDB(v *dbenv) error {
 	v.Port, _ = strconv.Atoi(dbPortStr)
 	v.User = os.Getenv("DB_USER")
 	v.Password = os.Getenv("DB_PASS")
+	v.DBname = os.Getenv("DB_NAME")
+	return nil
+}
+func vcapDB(v *dbenv, cfMysql MySQLService) error {
+	v.Host = cfMysql.Credentials.Hostname
+	v.Port = cfMysql.Credentials.Port
+	v.User = cfMysql.Credentials.Username
+	v.Password = cfMysql.Credentials.Password
 	v.DBname = os.Getenv("DB_NAME")
 	return nil
 }
@@ -74,7 +82,14 @@ func connectDB(config dbenv) (*sql.DB, error) {
 }
 func initDB() (*sql.DB, error) {
 	var dbenv dbenv
-	envDB(&dbenv)
+	var cfMysql MySQLService
+	err := vcapSqlService(&cfMysql)
+	if err != nil {
+		fmt.Println()
+		envDB(&dbenv)
+	} else {
+		vcapDB(&dbenv, cfMysql)
+	}
 	createDB(dbenv)
 	db, err := connectDB(dbenv)
 	if err != nil {
@@ -101,4 +116,12 @@ func (p *pictures) addFileSql(db *sql.DB) error {
 }
 func (p *pictures) getFileSql(db *sql.DB) error {
 	return db.QueryRow("SELECT picture FROM pictures").Scan(&p.pic)
+}
+
+func deleteRows(db *sql.DB) error {
+	_, err := db.Exec("delete from pictures")
+	if err != nil {
+		return err
+	}
+	return nil
 }

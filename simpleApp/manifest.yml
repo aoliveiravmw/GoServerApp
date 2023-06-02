@@ -1,0 +1,14 @@
+applications:
+- name: simpleapp
+  instances: 1
+  memory: 128M
+  disk_quota: 512M
+  buildpack: go_buildpack
+  stack: cflinuxfs3
+  env:
+    #DB_HOST: 10.30.90.46 
+    #DB_PORT: 33006 
+    #DB_USER: root 
+    #DB_PASS: VMware1! 
+    DB_NAME: simpleapp
+    GOVERSION: go1.15.8
