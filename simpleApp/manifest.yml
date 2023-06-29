@@ -11,4 +11,4 @@ applications:
     #DB_USER: root 
     #DB_PASS: VMware1! 
     DB_NAME: simpleapp
-    GOVERSION: go1.15.8
+   # GOVERSION: go1.15.8
