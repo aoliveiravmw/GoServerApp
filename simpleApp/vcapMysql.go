@@ -32,15 +32,13 @@ type MySQLService struct {
 func vcapSqlService(cfMysql *MySQLService) error {
 	varvalue := os.Getenv("VCAP_SERVICES")
 	if varvalue == "" {
-		fmt.Printf("Environment variable %s is not set.\n", "VCAP_SERVICES")
-		return nil
+		return fmt.Errorf("Environment variable %s is not set.\n", "VCAP_SERVICES")
 	}
 
 	var jsonData map[string][]MySQLService
 	err := json.Unmarshal([]byte(varvalue), &jsonData)
 	if err != nil {
-		fmt.Printf("Failed to parse JSON value of %s: %s\n", "VCAP_SERVICES", err)
-		return nil
+		return fmt.Errorf("Failed to parse JSON value of %s: %s\n", "VCAP_SERVICES", err)
 	}
 
 	services, exists := jsonData["p.mysql"]
@@ -50,7 +48,7 @@ func vcapSqlService(cfMysql *MySQLService) error {
 	}
 	*cfMysql = services[0]
 
-	/*
+	/* For Debugging
 	   fmt.Printf("Binding Name: %v\n", service.BindingName)
 	   fmt.Printf("Instance Name: %s\n", service.InstanceName)
 	   fmt.Printf("Label: %s\n", service.Label)

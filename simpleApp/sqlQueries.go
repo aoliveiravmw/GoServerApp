@@ -85,7 +85,7 @@ func initDB() (*sql.DB, error) {
 	var cfMysql MySQLService
 	err := vcapSqlService(&cfMysql)
 	if err != nil {
-		fmt.Println()
+		fmt.Println(err)
 		envDB(&dbenv)
 	} else {
 		vcapDB(&dbenv, cfMysql)
