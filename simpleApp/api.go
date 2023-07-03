@@ -23,7 +23,7 @@ func (a *App) Initialize() {
 }
 func (a *App) Run() {
 	fmt.Println("Server started and listening on port ", a.Port)
-	log.Fatal(http.ListenAndServe(a.Port, a.Router))
+	log.Fatal(http.ListenAndServe(a.Port, addCorsHeaders(a.Router)))
 	//log.Fatal(http.ListenAndServeTLS(":4443", "../server.crt", "../server.key", nil))
 }
 
@@ -103,4 +103,23 @@ func (a *App) deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 	// Return a success response
 	w.WriteHeader(http.StatusOK)
+}
+
+func addCorsHeaders(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow requests from any origin
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Allow the GET, POST, and OPTIONS methods
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		// Allow the Content-Type header
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			// Handle preflight requests
+			return
+		}
+
+		// Call the next handler
+		handler.ServeHTTP(w, r)
+	})
 }
