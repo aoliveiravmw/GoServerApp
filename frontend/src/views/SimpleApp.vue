@@ -14,24 +14,62 @@
 </template>
 
 <style>
+body {
+  background-color: #050505;
+}
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  background-color: #403f3f;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.logo {
-  margin-bottom: 20px;
+.logo img {
+  width: 150px;
+  height: auto;
 }
 
 .server-status {
-  margin-bottom: 20px;
+  margin-top: 30px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .upload-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  margin-top: 30px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.display-pic {
+  margin-top: 30px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Additional Styles for Button */
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #4c86c6;
+  color: #ffffff;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+}
+
+.button:hover {
+  background-color: #3667a9;
 }
 </style>
 

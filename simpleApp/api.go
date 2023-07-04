@@ -41,7 +41,7 @@ func (a *App) uploadFile(w http.ResponseWriter, r *http.Request) {
 	//verify if there is 1 file already
 	count, _ := getCountrows(a.DB)
 	if count != 0 {
-		http.Error(w, "Cannot upload picture. One file already exists.", http.StatusBadRequest)
+		http.Error(w, "Cannot upload picture. One file already exists. Delete the existing file", http.StatusBadRequest)
 		return
 	}
 	// Parse the multipart form file
