@@ -35,7 +35,7 @@ func (a *App) initalizeRoutes() {
 }
 
 func getReq(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Server is Online\n")
+	fmt.Fprintf(w, "Online\n")
 }
 func (a *App) uploadFile(w http.ResponseWriter, r *http.Request) {
 	//verify if there is 1 file already
@@ -97,6 +97,12 @@ func (a *App) downloadFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) deleteFile(w http.ResponseWriter, r *http.Request) {
+	//verify if there is 1 file already
+	count, _ := getCountrows(a.DB)
+	if count == 0 {
+		http.Error(w, "Cannot delete picture. There are none uploaded.", http.StatusBadRequest)
+		return
+	}
 	err := deleteRows(a.DB)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Delete picture failed with error: %s", err.Error()), http.StatusInternalServerError)
@@ -110,7 +116,7 @@ func addCorsHeaders(handler http.Handler) http.Handler {
 		// Allow requests from any origin
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		// Allow the GET, POST, and OPTIONS methods
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		// Allow the Content-Type header
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 

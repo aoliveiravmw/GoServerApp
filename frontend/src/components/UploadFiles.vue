@@ -1,7 +1,13 @@
 <template>
  <div class="hello">
-    <input type="file" @change="OnFileSelected">
-    <button @click="onUpload">Upload</button>
+    <table>
+      <tr>
+        <th>Choose a file to Upload</th>
+        <td><input type="file" @change="OnFileSelected"></td>
+        <td><button @click="onUpload">Upload</button></td>
+      </tr>
+      <tr><div>{{ uploadOutput[uploadOutput.length - 1] }}</div></tr>
+    </table>
  </div>
 </template>
 
@@ -12,7 +18,8 @@ export default {
     name: 'UploadFiles',
     data () {
         return {
-           selectedFile: null
+           selectedFile: null,
+           uploadOutput: []
         }
     },
     methods: {
@@ -28,7 +35,18 @@ export default {
                 }
             })
             .then(res => {
+                this.uploadOutput.push(`HTTP ${res.status}: ${res.statusText}`); // Push the response status and statusText
                 console.log(res)
+            })
+            .catch((err) => { 
+                console.log(err);
+                if (err.response && err.response.status === 400) {
+                  this.uploadOutput.push(`HTTP ${err.response.status}: ${err.response.data}`); // Push the error response status and statusText
+                  console.log(err.response.status);
+                  console.log(err.response.data);
+                } else {
+                  this.uploadOutput.push(`Error: ${err.message}`); // Push the error message if no response or non-400 status code is available
+                }
             })
         }
     }
