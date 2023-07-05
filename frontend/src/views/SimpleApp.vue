@@ -15,13 +15,13 @@
 
 <style>
 body {
-  background-color: #050505;
+  background-color: #8f8d8d;
 }
 .container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: #403f3f;
+  background-color: #f0f6f0;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -34,7 +34,7 @@ body {
 
 .server-status {
   margin-top: 30px;
-  background-color: #ffffff;
+  background-color: #a9aba9;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -42,7 +42,7 @@ body {
 
 .upload-section {
   margin-top: 30px;
-  background-color: #ffffff;
+  background-color: #bdc0bd;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -50,7 +50,7 @@ body {
 
 .display-pic {
   margin-top: 30px;
-  background-color: #ffffff;
+  background-color: #c7c9c7;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
